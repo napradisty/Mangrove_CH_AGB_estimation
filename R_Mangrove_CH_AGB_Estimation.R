@@ -1,8 +1,9 @@
-###########################################################################
-##  Estimating canopy height and aboveground biomass in tropical  
-##  mangrove restoration areas through multisource remote sensing 
-##  R code written by N.A. Pradisty (2025)                            
-###########################################################################
+# Estimating canopy height and aboveground biomass using multisource remote sensing
+# Data compiled and code written by Novia Arinda Pradisty
+# Published date: 15-10-2025
+
+# Based on the publication of:
+# Pradisty NA, Schlund M, Horstman EM, Willemen L. Under review. Estimating canopy height and aboveground biomass in tropical mangrove restoration areas through multisource remote sensing. Ecological Informatics.
 
 # Clear all objects from the workspace
 # rm(list = ls())
@@ -1358,4 +1359,5 @@ names(fs.data) <- c("Location", "Site", "Type", "Age", "CanopyOpeness", "Oversto
                     "Lorey.height", "height_max", "height_avg", "height_q60", "height_q65", "height_q90", "height_q95", "height_q99", "geometry" )
 fs.data <- fs.data %>%
   mutate(across(where(is.character), as.factor))
+
 levels(fs.data$Type) <- c("Non-restoration", "Under-restoration") #c("Non-restored", "Restored")
