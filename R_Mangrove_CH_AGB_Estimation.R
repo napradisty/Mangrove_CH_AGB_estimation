@@ -36,6 +36,13 @@ library(zen4R)        # Data repository access
 # Set preferred functions to avoid conflicts
 tidymodels_prefer()
 
+##########################   DATA FOR MODEL   ###########################
+# Note: 
+# The exemplary UAV-LiDAR point clouds and 15-m spatial resolution canopy height and aboveground biomass data is archived in Zenodo: (DOI). 
+# SAOCOM-1 data can generally be requested and accessed at the SAOCOM Catalog of the Argentinean National Commission on Space Activities (CONAE) (CONAE, 2025). 
+# Sentinel-1 and Sentinel-2 data can be publicly accessed at Copernicus Data Space Ecosystem (CDSE) of the European Space Agency (ESA) (ESA, 2025b)
+# BP = Budeng-Perancak; TA = Tahura Ngurah Rai
+
 # Read multisource satellite data and project to UTM zone 50S
 rr_modelbp <- terra::rast('your/path/RF model data BP.tif') %>%  terra::project('EPSG:32750')
 rr_predbp <- terra::rast('your/path/Prediction data BP.tif') %>%  terra::project('EPSG:32750')
@@ -54,8 +61,11 @@ rrta_sf <- as.data.frame(rr_predta, xy = TRUE) %>%
   drop_na() %>%
   st_as_sf(coords = c("x", "y"), crs = 32750)
 
+#######################################################################
+#############             MODEL DEVELOPMENT              ##############
+#######################################################################
 
-######################### SPATIAL CROSS-VALIDATION SETUP #########################
+#################### SPATIAL CROSS-VALIDATION SETUP ###################
 
 # Set random seed for reproducibility
 set.seed(100)
@@ -1361,3 +1371,4 @@ fs.data <- fs.data %>%
   mutate(across(where(is.character), as.factor))
 
 levels(fs.data$Type) <- c("Non-restoration", "Under-restoration") #c("Non-restored", "Restored")
+
