@@ -1,9 +1,17 @@
-# Estimating canopy height and aboveground biomass using multisource remote sensing
+#### ESTIMATING MANGROVE CANOPY HEIGHT AND ABOVEGROUND BIOMASS USING MULTISOURCE REMOTE SENSING ####
+
 # Data compiled and code written by Novia Arinda Pradisty
 # Published date: 15-10-2025
 
 # Based on the publication of:
 # Pradisty NA, Schlund M, Horstman EM, Willemen L. Under review. Estimating canopy height and aboveground biomass in tropical mangrove restoration areas through multisource remote sensing. Ecological Informatics.
+
+# The model development data (i.e. RF model data BP.tif) consists of 15-m spatial resolution canopy height (Height.q95) and aboveground biomass (AGB.Chave) layers as reference data,
+# complemented by multiple layers of multisource remote sensing data (from Sentinel-1 (S1), Sentinel-2 (S2), SAOCOM-1 (SAO) and Copernicus GLO-30 DEM).
+# Non-proprietary and non-public data and is recorded in Zenodo: (DOI: 10.5281/zenodo.17359993). 
+# SAOCOM-1 data can generally be requested and accessed at the SAOCOM Catalog of the Argentinean National Commission on Space Activities (CONAE) (https://catalog.saocom.conae.gov.ar/catalog/). 
+# Sentinel-1 and Sentinel-2 data can be publicly accessed at Copernicus Data Space Ecosystem (CDSE) of the European Space Agency (ESA) (https://dataspace.copernicus.eu/).
+# BP = Budeng-Perancak; TA = Tahura Ngurah Rai
 
 # Clear all objects from the workspace
 # rm(list = ls())
@@ -13,7 +21,7 @@
 # install.packages(c("sf", "terra", "raster"))
 
 # Note 1: Change 'your/path' to your own path.
-# Note 2: Run ggsave, save.csv or saveRDS line by removing/excluding the hashtag (#). 
+# Note 2: Run ggsave, save.csv, writeVector or saveRDS line by removing/excluding the hashtag (#). 
 
 library(sf)           # Spatial data handling
 library(terra)        # Raster data processing
@@ -37,11 +45,30 @@ library(zen4R)        # Data repository access
 tidymodels_prefer()
 
 ##########################   DATA FOR MODEL   ###########################
-# Note: 
-# The exemplary UAV-LiDAR point clouds and 15-m spatial resolution canopy height and aboveground biomass data is archived in Zenodo: (DOI). 
-# SAOCOM-1 data can generally be requested and accessed at the SAOCOM Catalog of the Argentinean National Commission on Space Activities (CONAE) (CONAE, 2025). 
-# Sentinel-1 and Sentinel-2 data can be publicly accessed at Copernicus Data Space Ecosystem (CDSE) of the European Space Agency (ESA) (ESA, 2025b)
-# BP = Budeng-Perancak; TA = Tahura Ngurah Rai
+
+# Read 15-m spatial resolution canopy height - aboveground biomass (CH - AGB) data and project to UTM zone 50S
+ch_agb <- terra::rast('your/path/CH_AGB_15m.tif') %>%  terra::project('EPSG:32750')
+plot(ch_agb)
+
+# List of Sentinel-1 variables: "Coherence_VH_S1","Coherence_VV_S1",
+# "Entropy_VHVV_S1","Anisotropy_VHVV_S1","Alpha_VHVV_S1","VH_S1","VV_S1",
+# "VHVV_Ratio_S1","VHVV_S1","sqrtVHVV_S1"
+
+# List of Sentinel-2 variables: "Blue_S2","Green_S2","Red_S2","RedEdge1_S2","RedEdge2_S2",
+# "RedEdge3_S2","NIR1_S2","RedEdge4_S2","SWIR1_S2","SWIR2_S2",
+# "AFRI1600_S2","BI_S2","BITM_S2","BIXS_S2","DBSI_S2","IKAW_S2","LSWI_S2","MBI_S2",      
+# "MRBVI_S2","MSI_S2","NDII_S2","NDMI_S2","NDVI_S2",'MTCI_S2','REDSI_S2', 'BI_S2', 
+# "PSRI_S2","RCC_S2","RENDVI_S2","SAVI_S2","WFI_S2","MDI_S2"
+
+# List of SAOCOM-1 variables: "HH_SAO","HV_SAO","VH_SAO","VV_SAO",
+# "HHHV_SAO","sqrtHHHV_SAO","HHHV_Ratio_SAO",
+# "VHVV_SAO","sqrtVHVV_SAO","VHVV_Ratio_SAO",
+# "Entropy_HHHV_SAO","Anisotropy_HHHV_SAO","Alpha_HHHV_SAO",
+# "Entropy_VHVV_SAO","Anisotropy_VHVV_SAO","Alpha_VHVV_SAO",
+# "Coherence_HV_SAO","Coherence_HH_SAO",
+# "Coherence_VH_SAO","Coherence_VV_SAO"
+
+# Copernicus GLO-30 DEM elevation variable: "Elevation_Cop30m"
 
 # Read multisource satellite data and project to UTM zone 50S
 rr_modelbp <- terra::rast('your/path/RF model data BP.tif') %>%  terra::project('EPSG:32750')
@@ -61,11 +88,8 @@ rrta_sf <- as.data.frame(rr_predta, xy = TRUE) %>%
   drop_na() %>%
   st_as_sf(coords = c("x", "y"), crs = 32750)
 
-#######################################################################
-#############             MODEL DEVELOPMENT              ##############
-#######################################################################
 
-#################### SPATIAL CROSS-VALIDATION SETUP ###################
+######################### SPATIAL CROSS-VALIDATION SETUP #########################
 
 # Set random seed for reproducibility
 set.seed(100)
@@ -747,9 +771,8 @@ preds_agb_reduced = preds_agb %>% filter(wflow_id=='Reduced_model')
 (sum(preds_agb_reduced$AGB.Chave)-sum(preds_agb_reduced$.pred))/max(preds_agb_reduced$.row)
 
 
-#######################################################################
-#############           FINAL MODEL PRODUCTION           ##############
-#######################################################################
+
+#############  FINAL MODEL PRODUCTION  ##############
 
 # Create spatial split for final model training 
 set.seed(100)
@@ -852,9 +875,9 @@ max(test_performance_ch$.estimate) /(max(test22_sf_ch$Height.q95)-min(test22_sf_
 max(test_performance_agb$.estimate)/(max(test22_sf_agb$AGB.Chave)-min(test22_sf_agb$AGB.Chave))*100
 
 
-##### Importance from trained dataset #######
+# Importance from trained dataset
 
-### Extract final importance graph 
+# Extract final importance graph 
 importance_df_ch <- extract_fit_parsnip(final_model_ch) %>% 
   vip::vi()%>%
   mutate(IP = 100 * Importance / sum(Importance))
@@ -979,7 +1002,8 @@ final_red_ch_plot+final_red_agb_plot
 
 ##################  CREATE PREDICTION MAP  ##################
 
-boundary <- terra::vect("M://Boundary.shp")%>%  terra::project('EPSG:32750')
+# Function to predict as vector and convert to raster data 
+
 process_predictions <- function(
     model, 
     new_data_sf, 
@@ -1033,34 +1057,33 @@ process_predictions <- function(
   }
 }
 
-map_bp_h_num <- process_predictions(final_model_h, rrbp_sf, predict_type = "numeric")
-map_bp_h_ci <- process_predictions(final_model_h, rrbp_sf, predict_type = "conf_int", std_error = TRUE)
+map_bp_ch_num <- process_predictions(final_model_ch, rrbp_sf, predict_type = "numeric")
+map_bp_ch_ci <- process_predictions(final_model_ch, rrbp_sf, predict_type = "conf_int", std_error = TRUE)
 map_bp_agb_num <- process_predictions(final_model_agb, rrbp_sf, predict_type = "numeric")
 map_bp_agb_ci <- process_predictions(final_model_agb, rrbp_sf, predict_type = "conf_int", std_error = TRUE)
 
-map_ta_h_num <- process_predictions(final_model_h, rrta_sf, predict_type = "numeric")
-map_ta_h_ci <- process_predictions(final_model_h, rrta_sf, predict_type = "conf_int", std_error = TRUE)
+map_ta_ch_num <- process_predictions(final_model_ch, rrta_sf, predict_type = "numeric")
+map_ta_ch_ci <- process_predictions(final_model_ch, rrta_sf, predict_type = "conf_int", std_error = TRUE)
 map_ta_agb_num <- process_predictions(final_model_agb, rrta_sf, predict_type = "numeric")
 map_ta_agb_ci <- process_predictions(final_model_agb, rrta_sf, predict_type = "conf_int", std_error = TRUE)
 
-map_bp_h_num_resampled <- resample(map_bp_h_num, rr_modelbp, method = "bilinear")                   
+map_bp_ch_num_resampled <- resample(map_bp_h_num, rr_modelbp, method = "bilinear")                   
 map_bp_agb_num_resampled <- resample(map_bp_agb_num, rr_modelbp, method = "bilinear")  
 ext_uav <- ext(237660, 239700, 9070750, 9073100)
 
 #Residual: actual values - predicted values
-subs_h = map_bp_h_num_resampled$.pred-rr_modelbp$Height.q95
-subs_h = rr_modelbp$Height.q95-map_bp_h_num_resampled$.pred
-subs_h  = subs_h %>% crop(ext_uav)
-subs_a = map_bp_agb_num_resampled$.pred-rr_modelbp$AGB.Chave 
-subs_a = rr_modelbp$AGB.Chave - map_bp_agb_num_resampled$.pred
-subs_a = subs_a %>% crop(ext_uav)
-terra::plot(subs_h)
+subs_ch = map_bp_ch_num_resampled$.pred-rr_modelbp$Height.q95
+subs_ch = rr_modelbp$Height.q95-map_bp_ch_num_resampled$.pred
+subs_ch  = subs_ch %>% crop(ext_uav)
+subs_agb = map_bp_agb_num_resampled$.pred-rr_modelbp$AGB.Chave 
+subs_agb = rr_modelbp$AGB.Chave - map_bp_agb_num_resampled$.pred
+subs_agb = subs_agb %>% crop(ext_uav)
+terra::plot(subs_ch)
 
-tiff("your/path/Prediction_H_BP_map.tiff", width = 2000, height = 1600, res = 300,pointsize = 9)  
+tiff("your/path/Prediction_CH_BP_map.tiff", width = 2000, height = 1600, res = 300,pointsize = 9)  
 par(mfrow=c(2,2))
 terra::plot(map_bp_h_num, main="Canopy height mean prediction (m)")
 terra::plot(boundary, add=T)
-#terra::plot(map_bp_h_ci[[2]], main="Canopy height H95 prediction (m)")
 terra::plot(map_bp_h_ci[[3]], main="Standard error (m)")
 terra::plot(rr_modelbp[[2]], main = 'UAV-LiDAR aggregated H95 (m)')
 terra::plot(subs_h, main="Subtraction of LiDAR and prediction value (m)")
@@ -1075,7 +1098,7 @@ terra::plot(rr_modelbp[[2]], main = 'UAV-LiDAR aggregated AGB (Mg/ha)')
 terra::plot(subs_a, main="Subtraction of LiDAR and prediction value (Mg/ha)")
 dev.off()
 
-tiff("your/path/Ecological Informatics/Prediction_H_TA_map.tiff", width = 2000, height = 1600, res = 300,pointsize = 7)  
+tiff("your/path/Prediction_CH_TA_map.tiff", width = 2000, height = 1600, res = 300,pointsize = 7)  
 par(mfrow=c(2,2))
 terra::plot(map_ta_h_num, main="Canopy height mean prediction (m)")
 terra::plot(map_ta_h_ci[[2]], main="Canopy height P95 prediction (m)")
@@ -1090,14 +1113,14 @@ terra::plot(map_ta_agb_ci[[3]], main="Standard error (Mg/ha)")
 terra::plot(agc_ta, main="Aboveground carbon mean prediction (MgC/ha)")
 dev.off()
 
-writeRaster(subs_h, "your/path/h_subtract_bp.tif", overwrite = TRUE)
-writeRaster(subs_a, "your/path/agb_subtract_bp.tif", overwrite = TRUE)
+writeRaster(subs_ch, "your/path/ch_subtract_bp.tif", overwrite = TRUE)
+writeRaster(subs_agb, "your/path/agb_subtract_bp.tif", overwrite = TRUE)
 
-writeRaster(map_bp_h_num, "your/path/h_num_bp.tif", overwrite = TRUE)
-writeRaster(map_bp_h_ci, "your/path/h_ci_bp.tif", overwrite = TRUE)
+writeRaster(map_bp_ch_num, "your/path/ch_num_bp.tif", overwrite = TRUE)
+writeRaster(map_bp_ch_ci, "your/path/ch_ci_bp.tif", overwrite = TRUE)
 
-writeRaster(map_ta_h_num, "your/path/h_num_ta.tif", overwrite = TRUE)
-writeRaster(map_ta_h_ci, "your/path/h_ci_ta.tif", overwrite = TRUE)
+writeRaster(map_ta_ch_num, "your/path/ch_num_ta.tif", overwrite = TRUE)
+writeRaster(map_ta_ch_ci, "your/path/ch_ci_ta.tif", overwrite = TRUE)
 
 writeRaster(map_bp_agb_num, "your/path/agb_num_bp.tif", overwrite = TRUE)
 writeRaster(map_bp_agb_ci, "your/path/agb_ci_bp.tif", overwrite = TRUE)
@@ -1105,44 +1128,31 @@ writeRaster(map_bp_agb_ci, "your/path/agb_ci_bp.tif", overwrite = TRUE)
 writeRaster(map_ta_agb_num, "your/path/agb_num_ta.tif", overwrite = TRUE)
 writeRaster(map_ta_agb_ci, "your/path/agb_ci_ta.tif", overwrite = TRUE)
 
-###### RESIDUALS ######
-fs.data <- st_read("M://forest_structure_final.shp")
+
+######  RESIDUAL ANALYSIS  ######
+
+# Calculate the residuals between predicted and field CH or AGB in Tahura Ngurah Rai
+
+# Read field data 
+fs.data <- st_read("M://Plot_level_CH_AGB.shp")
 fs.data <- st_transform(fs.data, crs = 32750)
-names(fs.data) <- c("Location", "Site", "Type", "Age", "CanopyOpeness", "OverstoryDensity", "AGB.Chave","AGB.Chave2005", "AGB.Komiyama", 
-                    "Lorey.height", "height_max", "height_avg", "height_q60", "height_q65", "height_q90", "height_q95", "height_q99", "geometry" )
-fs.data <- fs.data %>%
-  mutate(across(where(is.character), as.factor))
-levels(fs.data$Type) <- c("Non-restoration", "Under-restoration") #c("Non-restored", "Restored")
 
-field.bp <- subset(fs.data, Location == "Budeng Perancak")%>% terra::vect()
-field.ta <- subset(fs.data, Location == "Tahura Ngurah Rai")%>% terra::vect()
-
-zsdata.bp <- terra::zonal(rr_predbp,field.bp, fun='mean', as.polygons=TRUE, exact=TRUE, na.rm=TRUE)%>%#
-  as.data.frame()%>% subset(Location=="Budeng Perancak") %>% select(c(Site,Elevation_Cop30m))
-zsdata.ta <- terra::zonal(rr_predta,field.ta, fun='mean', as.polygons=TRUE, exact=TRUE, na.rm=TRUE)%>%#
-  as.data.frame()%>% subset(Location=="Tahura Ngurah Rai") %>%select(c(Site,Elevation_Cop30m))
-
-zsdata.bp.h <- terra::zonal(map_bp_h_num,field.bp, fun='mean', as.polygons=TRUE, exact=TRUE, na.rm=TRUE)%>%#
-  as.data.frame()%>% subset(Location=="Budeng Perancak")
-zsdata.bp.agb  <- terra::zonal(map_bp_agb_num,field.bp, fun='mean', as.polygons=TRUE, exact=TRUE, na.rm=TRUE)%>%#
-  as.data.frame()%>% subset(Location=="Budeng Perancak") 
-
-
-zsdata.ta.h  <- terra::zonal(map_ta_h_num,field.ta, fun='mean', as.polygons=TRUE, exact=TRUE, na.rm=TRUE)  %>% # as.data.frame(rr_predta, xy=T)%>%
+# Zonal statistics of CH and AGB from predicted raster data
+zsdata.ta.ch  <- terra::zonal(map_ta_ch_num,field.ta, fun='mean', as.polygons=TRUE, exact=TRUE, na.rm=TRUE)  %>% 
   sf::st_as_sf(coords = c("x", "y"), crs = 32750)%>%
-  mutate(resid_ta_h = height_q95 - .pred) %>% terra::vect() %>% terra::buffer(width = 15)
-head(zsdata.ta.h)
-#as.data.frame(xy=T)%>%sf::st_as_sf(coords = c("x", "y"), crs = 32750)
-zsdata.ta.agb  <- terra::zonal(map_ta_agb_num,field.ta, fun='mean', as.polygons=TRUE, exact=TRUE, na.rm=TRUE)  %>% #as.data.frame() %>% subset(Location=="Tahura Ngurah Rai") %>% 
+  mutate(resid_ta_ch = Height.q95 - .pred) %>% terra::vect() %>% terra::buffer(width = 15)
+head(zsdata.ta.ch)
+
+zsdata.ta.agb  <- terra::zonal(map_ta_agb_num,field.ta, fun='mean', as.polygons=TRUE, exact=TRUE, na.rm=TRUE)  %>% 
   sf::st_as_sf(coords = c("x", "y"), crs = 32750)%>% 
   mutate(resid_ta_a = AGB.Chave - .pred)%>% terra::vect() %>% terra::buffer(width = 15) 
 
-writeVector(zsdata.ta.h, "your/path/TA_plot_predict_CH.shp",overwrite=TRUE)
-writeVector(zsdata.ta.agb, "your/path/TA_plot_predict_AGB.shp",overwrite=TRUE)
+#writeVector(zsdata.ta.ch, "your/path/TA_plot_predict_CH.shp",overwrite=TRUE)
+#writeVector(zsdata.ta.agb, "your/path/TA_plot_predict_AGB.shp",overwrite=TRUE)
 
-zsdata.ta.h_  <-zsdata.ta.h %>% as.data.frame()
+zsdata.ta.ch_  <-zsdata.ta.ch %>% as.data.frame()
 zsdata.ta.agb_  <-  zsdata.ta.agb%>% as.data.frame()
-zsdata.ta.h.df <- left_join(zsdata.ta,zsdata.ta.h_, by = "Site")
+zsdata.ta.ch.df <- left_join(zsdata.ta,zsdata.ta.ch_, by = "Site")
 zsdata.ta.agb.df <- left_join(zsdata.ta,zsdata.ta.agb_, by = "Site")
 
 library(ggpmisc)
@@ -1151,10 +1161,10 @@ library(ggrepel)
 conflicted::conflicts_prefer(dplyr::mutate)
 
 # Plot residuals vs. predicted values
-resid_plot_h = ggplot(zsdata.ta.h.df, aes(x = .pred, y = resid_ta_h, col=Elevation_Cop30m, shape=Type)) +
+resid_plot_ch = ggplot(zsdata.ta.ch.df, aes(x = .pred, y = resid_ta_ch, col=Elevation_Cop30m, shape=Type)) +
   geom_point(show.legend=F,size=2) +ylim(-7,7)+
   geom_hline(yintercept = 0, linetype = "dashed", color = "red") +
-  theme(legend.position='none',)+#plot.title = element_text(face = "bold")
+  theme(legend.position='none',)+
   paletteer::scale_color_paletteer_c(trans = 'reverse',"grDevices::Spectral")+
   labs(title = "A. Canopy height", x = "Predicted canopy height (m)", y = "Residual", color="Elevation (m)")
 
@@ -1165,17 +1175,15 @@ resid_plot_agb = ggplot(zsdata.ta.agb.df, aes(x = .pred, y = resid_ta_a, col=Ele
   labs(title = 'B. Aboveground biomass', x = expression("Predicted aboveground biomass (Mg ha"^-1 * ")"), 
        y = "Residual",Type="Mangrove type",  color="Elevation (m)")
 resid_plot_h+resid_plot_agb 
-##ggsave("your/path/TA_H_AGB_residuals.tiff",  width = 9, height = 4, dpi = 400, compression = "lzw")
+#ggsave("your/path/TA_H_AGB_residuals.tiff",  width = 9, height = 4, dpi = 400, compression = "lzw")
 
-####################
+
 ch_ta_all = zsdata.ta.ch.df %>%
   mutate(across(c(Type,Age), as.factor)) %>%
-  #mutate(Age = factor(Age, levels = c("(1-10)", "(11-20)", "(>20)"), ordered = TRUE))%>%
-  ggplot(aes(x=.pred, y=height_q95)) +#(aes(y=.pred, x=height_q95)) +
+  ggplot(aes(x=.pred, y=height_q95)) +
   paletteer::scale_color_paletteer_c(trans = 'reverse',"grDevices::Spectral")+
   geom_point(aes(col=Elevation_Cop30m,shape=Type), size=2.5) + theme_bw()+
   theme_bw()+theme(legend.position='none',plot.title = element_text(size = 14))+
-  #geom_text_repel()+
   geom_abline(slope = 1, intercept = 0,linetype = "dashed", color = "red") +  # Perfect fit line
   stat_poly_eq(rr.digits=2, p.digits=2,formula = y ~ x, use_label( "R2", "p", "n"))+
   stat_smooth(method = 'lm',formula =y~x, 
@@ -1185,27 +1193,23 @@ ch_ta_all = zsdata.ta.ch.df %>%
 ch_ta = zsdata.ta.ch.df %>%
   mutate(across(c(Type,Age), as.factor)) %>%
   mutate(Type = fct_rev(Type))%>%
-  #mutate(Age = factor(Age, levels = c("(1-10)", "(11-20)", "(>20)"), ordered = TRUE))%>%
-  ggplot(aes(x=.pred, y=height_q95)) +#ggplot(aes(y=.pred, x=height_q95)) +
+  ggplot(aes(x=.pred, y=height_q95)) +
   paletteer::scale_color_paletteer_c(trans = 'reverse',"grDevices::Spectral")+
   geom_point(aes(col=Elevation_Cop30m,shape=Type), size=2.5) + 
   theme_bw()+theme(legend.position='none')+
-  #geom_text_repel()+
   geom_abline(slope = 1, intercept = 0, linetype = "dashed",color = "red") +  # Perfect fit line
   stat_poly_eq(rr.digits=2, p.digits=2,formula = y ~ x, use_label("R2", "p", "n"))+
   stat_smooth(method = 'lm',formula =y~x, 
               se = FALSE,col='black')+
   labs(title='',  x='Observed (m)', y= "Predicted (m)")+
-  facet_wrap(Type~., ncol=2)+ylim(0,20)+ xlim(0,20)#facet_wrap(Type~Age, ncol=2)+ylim(0,20)+ xlim(0,20)
+  facet_wrap(Type~., ncol=2)+ylim(0,20)+ xlim(0,20)
 
 agb_ta_all = zsdata.ta.agb.df %>%
   mutate(across(c(Type,Age), as.factor)) %>%
-  #mutate(Age = factor(Age, levels = c("(1-10)", "(11-20)", "(>20)"), ordered = TRUE))%>%
   ggplot(aes(x=.pred, y=AGB.Chave)) +
   paletteer::scale_color_paletteer_c(trans = 'reverse',"grDevices::Spectral")+
   geom_point(aes(col=Elevation_Cop30m,shape=Type), size=2.5) + theme_bw()+
   theme(legend.position="none",plot.title = element_text(size = 14))+
-  #geom_text_repel()+
   geom_abline(slope = 1, intercept = 0, linetype = "dashed",color = "red") +  # Perfect fit line
   stat_poly_eq(rr.digits=2, p.digits=2,formula = y ~ x, use_label( "R2", "p", "n"))+
   stat_smooth(method = 'lm',formula =y~x, 
@@ -1218,7 +1222,6 @@ agb_ta_all = zsdata.ta.agb.df %>%
 agb_ta = zsdata.ta.agb.df %>%
   mutate(across(c(Type,Age), as.factor)) %>%
   mutate(Type = fct_rev(Type))%>%
-  #mutate(Age = factor(Age, levels = c("(1-10)", "(11-20)", "(>20)"), ordered = TRUE))%>%
   ggplot(aes(x=.pred, y=AGB.Chave)) +#
   geom_point(aes(col=Elevation_Cop30m,shape=Type), size=2.5) + theme_bw()+
   paletteer::scale_color_paletteer_c(trans = 'reverse',"grDevices::Spectral")+
@@ -1234,12 +1237,12 @@ agb_ta = zsdata.ta.agb.df %>%
 
 
 h_ta_all+h_ta+agb_ta_all+agb_ta+plot_layout(widths = c(1, 2))
-##ggsave("your/path/TA_H_AGB_predvstrue.tiff",  width = 8.5, height = 7.5, dpi = 400, compression = "lzw")
+#ggsave("your/path/TA_CH_AGB_predvstrue.tiff",  width = 8.5, height = 7.5, dpi = 400, compression = "lzw")
 
-pg1=resid_plot_h+h_ta_all+h_ta+plot_layout(widths = c(1,1, 2))#h_ta_all+h_ta+plot_layout(widths = c(1,2))
-pg2=resid_plot_agb+agb_ta_all+agb_ta +plot_layout(widths = c(1,1, 2))#agb_ta_all+agb_ta +plot_layout(widths = c(1,2))
+pg1=resid_plot_h+h_ta_all+h_ta+plot_layout(widths = c(1,1, 2))
+pg2=resid_plot_agb+agb_ta_all+agb_ta +plot_layout(widths = c(1,1, 2))
 pg1/pg2
-##ggsave("your/path/TA_H_AGB_residual_obs_pred_final__.tiff",  width = 12, height = 7, dpi = 400, compression = "lzw")
+#ggsave("your/path/TA_CH_AGB_residual_obs_pred_final__.tiff",  width = 12, height = 7, dpi = 400, compression = "lzw")
 
 ############## MAP OF SPATIAL CROSS-VALIDATION ###########
 
@@ -1288,87 +1291,40 @@ image_append(rmagick, stack=T)%>%
 image_append(residmagick, stack=T)%>%
   image_write("your/path/Residualmapfinal_STACK.tiff", format = "tiff")
 
+################ UAV-LIDAR POINT CLOUDS OF MANGROVE RESTORATION ####################
 
-################### CORRELATION PLOT ####################
+library(rGEDI)
+library(rGEDIsimulator)
+library(lidR)
+library(plot3D)
 
-# Get unique variables from all sources
-unique_vars <- unique(importance_final$Variable) 
+clipA = readLAS("your/path/A.Early-stage non-restoration.las")
+clipB = readLAS("your/path/B.Early-stage restoration.las")
+clipC = readLAS("your/path/C.Nypa mangroves.las")
+clipD = readLAS("your/path/D.Late-stage restoration.las")
+clipE = readLAS("your/path/E.Late-stage non-restoration.las")
 
-# Convert to comma-separated list
-comma_separated_vars <- paste(unique_vars, collapse = ", ")
+# Example of UAV-LiDAR plot
+plot(clipA)
 
-# Print the result
-cat(comma_separated_vars)
+# Graph of UAV-LiDAR point clouds
+tiff("your/path/uav_lidar_simulation.tiff", width = 3500, height = 800, units = 'px', res = 300, compression = "lzw") 
 
-# Read data for creating correlation plot 
-bp.df.raw <- read.csv("your/path/Corrplot_BP.csv") #all variables
-bp.df <- read.csv("your/path/Corrplot_BP_FS.csv") #reduced variables after feature selection
-ta.df <- read.csv("your/path/Corrplot_TA_FS.csv") #reduced variables after feature selection
+par(mfrow=c(1,5), mar=c(0.1,1,2,0), oma=c(0,2,0,0),cex.axis = 1)
+scatter3D(clipA@data$X,clipA@data$Y,clipA@data$Z,pch = 16,colkey = FALSE, main="(A)\n Early-stage non-restoration", 
+          bty = "u",col.panel ="gray95",phi = 30,alpha=1,theta=45, zlim = c(-2, 18),cex.lab=0.9,
+          col.grid = "gray50", xlab="UTM Easting (m)", ylab="UTM Northing (m)", zlab="Normalized height (m)")
+scatter3D(clipB@data$X,clipB@data$Y,clipB@data$Z,pch = 16,colkey = FALSE, main="(B)\n Early-stage restoration",
+          bty = "u",col.panel ="gray95",phi = 30,alpha=1,theta=45,zlim = c(-4, 18),cex.lab=0.9,
+          col.grid = "gray50", xlab="UTM Easting (m)", ylab="UTM Northing (m)", zlab="Normalized height (m)")
+scatter3D(clipC@data$X,clipC@data$Y,clipC@data$Z,pch = 16,colkey = FALSE, main="(C)\n Nypa mangroves",
+          bty = "u",col.panel ="gray95",phi = 30,alpha=1,theta=45,zlim = c(-4, 18),cex.lab=0.9,
+          col.grid = "gray50", xlab="UTM Easting (m)", ylab="UTM Northing (m)", zlab="Normalized height (m)")
+scatter3D(clipD@data$X,clipD@data$Y,clipD@data$Z,pch = 16,colkey = FALSE, main="(D)\n Late-stage restoration",
+          bty = "u",col.panel ="gray95",phi = 30,alpha=1,theta=45,zlim = c(-4, 18),cex.lab=0.9,
+          col.grid = "gray50", xlab="UTM Easting (m)", ylab="UTM Northing (m)", zlab="Normalized height(m)")
+scatter3D(clipE@data$X,clipE@data$Y,clipE@data$Z,pch = 16,colkey = FALSE, main="(E)\n Late-stage non-restoration",
+          bty = "u",col.panel ="gray95",phi = 30,alpha=1,theta=45,zlim = c(-4, 18),cex.lab=0.9,
+          col.grid = "gray50", xlab="UTM Easting (m)", ylab="UTM Northing (m)", zlab="Normalized height (m)")
 
-bp.df.raw <- as.data.frame(rr_sf) %>% st_drop_geometry()%>% dplyr::select(-c('geometry'))
-bp.df <- as.data.frame(rr_sf) %>% st_drop_geometry() %>% dplyr::select(-c('geometry',"AGB.Chave","Height.q95","Blue_S2", "Green_S2", "RedEdge1_S2",  "RedEdge2_S2", "RedEdge3_S2",  "RedEdge4_S2", 
-                                                                          "AFRI1600_S2","BI_S2",  "BIXS_S2",  "DBSI_S2", "IKAW_S2", "LSWI_S2","MBI_S2", "MSI_S2","NDII_S2", "NDMI_S2","NIR1_S2",
-                                                                          "NDVI_S2", "PSRI_S2","RCC_S2","RENDVI_S2","WFI_S2","MRBVI_S2", 
-                                                                          "MDI_S2", "HH_SAO", "VH_SAO", "VV_SAO", "Entropy_HHHV_SAO","Entropy_VHVV_SAO","HHHV_SAO", "VHVV_SAO", 
-                                                                          "Entropy_VHVV_S1","VV_S1","sqrtVHVV_S1","REDSI_S2")) 
-
-
-# Variable reordering 
-# Compute correlation matrix
-cor_mat <- cor(bp.df,use="pairwise.complete.obs", method='spearman')
-cor_mat_raw <- cor(bp.df.raw,use="pairwise.complete.obs", method='spearman')
-
-#write.csv(cor_mat_raw, "your/path/corr_all_param_raw.csv")
-
-# Verify all priority variables exist in the matrix
-priority_vars <- c("CH", "AGB") # MUST match column names exactly
-stopifnot(all(priority_vars %in% colnames(cor_mat))) # Check existence
-stopifnot(all(priority_vars %in% colnames(cor_mat_raw))) # Check existence
-
-# Hierarchical clustering (on remaining variables)
-other_vars <- setdiff(colnames(cor_mat), priority_vars)
-hc <- hclust(dist(cor_mat[other_vars, other_vars]))
-
-other_vars_raw <- setdiff(colnames(cor_mat_raw), priority_vars)
-hc_raw <- hclust(dist(cor_mat_raw[other_vars_raw, other_vars_raw]))
-
-# Create ordered variable list
-ordered_vars <- c(priority_vars, other_vars[hc$order])
-ordered_vars_raw <- c(priority_vars, other_vars_raw[hc_raw$order])
-
-# Subset matrix 
-cor_mat_ordered <- cor_mat[ordered_vars, ordered_vars]
-cor_mat_ordered_raw <- cor_mat_raw[ordered_vars_raw, ordered_vars_raw]
-
-#write.csv(cor_mat_ordered, "your/path/corr_reduced_param.csv")
-#write.csv(cor_mat_ordered_raw, "your/path/corr_all_param.csv")
-
-library(corrplot)
-
-tiff("your/path/corrplot_bp.tiff", width = 3000, height = 2800, res = 400,compression='lzw', pointsize = 9)  
-corrplot(cor_mat_ordered_raw, diag=F,type = 'lower',  tl.col = "black",order = "original", hclust.method = "complete",
-         tl.cex = 0.7,cl.cex=0.7,cl.ratio = 0.1, tl.srt =40,col = COL2('RdYlBu'))#,addgrid.col = rgb(0, 0, 0, .05)
 dev.off()
-#corrplot(cor(bp.df.raw,use="pairwise.complete.obs", method='spearman'), diag=F,type = 'lower',   tl.col = 'black',tl.cex = 0.7,cl.cex=0.7,
-#         cl.ratio = 0.1, tl.srt =40,col = COL2('RdYlBu'), order = "hclust")#,addgrid.col = rgb(0, 0, 0, .05)
-
-tiff("your/path/corrplot_bp_ellipse.tiff", width = 2000, height = 1600, res = 300,compression='lzw', pointsize = 9)  
-corrplot(cor_mat_ordered, diag=F,type = 'lower', method='ellipse', 
-         tl.col = "black",order = "original", hclust.method = "complete",
-         tl.cex = 0.7,cl.cex=0.7,cl.ratio = 0.1, tl.srt =40,col = COL2('RdYlBu'))#, order = "hclust"
-dev.off()
-
-tiff("your/path/corrplot_ta.tiff", width = 2000, height = 1600, res = 300,pointsize = 9)  
-corrplot(cor(ta.df,use="pairwise.complete.obs", method='spearman'), type = 'lower', tl.col = 'black',tl.cex = 0.7,cl.cex=0.7,
-         cl.ratio = 0.1, tl.srt = 45,  col = COL2('RdYlBu'), order = "hclust")
-dev.off()
-
-fs.data <- st_read("M://forest_structure_final.shp")
-fs.data <- st_transform(fs.data, crs = 32750)
-names(fs.data) <- c("Location", "Site", "Type", "Age", "CanopyOpeness", "OverstoryDensity", "AGB.Chave","AGB.Chave2005", "AGB.Komiyama", 
-                    "Lorey.height", "height_max", "height_avg", "height_q60", "height_q65", "height_q90", "height_q95", "height_q99", "geometry" )
-fs.data <- fs.data %>%
-  mutate(across(where(is.character), as.factor))
-
-levels(fs.data$Type) <- c("Non-restoration", "Under-restoration") #c("Non-restored", "Restored")
-
