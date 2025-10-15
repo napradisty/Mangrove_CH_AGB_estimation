@@ -8,7 +8,7 @@
 
 # The model development data (i.e. RF model data BP.tif) consists of 15-m spatial resolution canopy height (Height.q95) and aboveground biomass (AGB.Chave) layers as reference data,
 # complemented by multiple layers of multisource remote sensing data (from Sentinel-1 (S1), Sentinel-2 (S2), SAOCOM-1 (SAO) and Copernicus GLO-30 DEM).
-# Non-proprietary and non-public data and is available in Zenodo: (DOI: 10.5281/zenodo.17359993). 
+# Non-proprietary and non-public data and is available in Zenodo: (DOI: https://zenodo.org/records/17359993?preview=1). 
 # SAOCOM-1 data can generally be requested and accessed at the SAOCOM Catalog of the Argentinean National Commission on Space Activities (CONAE) (https://catalog.saocom.conae.gov.ar/catalog/). 
 # Sentinel-1 and Sentinel-2 data can be publicly accessed at Copernicus Data Space Ecosystem (CDSE) of the European Space Agency (ESA) (https://dataspace.copernicus.eu/).
 # BP = Budeng-Perancak; TA = Tahura Ngurah Rai
@@ -1328,4 +1328,5 @@ scatter3D(clipE@data$X,clipE@data$Y,clipE@data$Z,pch = 16,colkey = FALSE, main="
           col.grid = "gray50", xlab="UTM Easting (m)", ylab="UTM Northing (m)", zlab="Normalized height (m)")
 
 dev.off()
+
 
