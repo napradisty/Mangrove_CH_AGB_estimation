@@ -2,7 +2,7 @@
 
 R code written by: Novia Arinda Pradisty
 
-Data availability DOI: 10.4121/29543386-0d37-44d7-8f8c-7548cfba8de0
+Data and code repository DOI: 10.4121/29543386-0d37-44d7-8f8c-7548cfba8de0
 
 This is a supplementary material prepared in support of the publication:
 Pradisty NA, Schlund M, Horstman EM, Willemen L. Under review. Estimating canopy height and aboveground biomass in tropical mangrove restoration areas through multisource remote sensing. Ecological Informatics.
