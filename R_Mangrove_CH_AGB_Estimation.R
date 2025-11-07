@@ -8,7 +8,7 @@
 
 # The model development data (i.e. RF model data BP.tif) consists of 15-m spatial resolution canopy height (Height.q95) and aboveground biomass (AGB.Chave) layers as reference data,
 # complemented by multiple layers of multisource remote sensing data (from Sentinel-1 (S1), Sentinel-2 (S2), SAOCOM-1 (SAO) and Copernicus GLO-30 DEM).
-# Non-proprietary and non-public data and is available in Zenodo: (DOI: 10.5281/zenodo.17359993). 
+# Non-proprietary and non-public data and is available in 4TU.ResearchData repository: (DOI: 10.4121/29543386-0d37-44d7-8f8c-7548cfba8de0). 
 # SAOCOM-1 data can generally be requested and accessed at the SAOCOM Catalog of the Argentinean National Commission on Space Activities (CONAE) (https://catalog.saocom.conae.gov.ar/catalog/). 
 # Sentinel-1 and Sentinel-2 data can be publicly accessed at Copernicus Data Space Ecosystem (CDSE) of the European Space Agency (ESA) (https://dataspace.copernicus.eu/).
 # BP = Budeng-Perancak; TA = Tahura Ngurah Rai
@@ -896,7 +896,7 @@ importance_final <- bind_rows(
 #write.csv(importance_final, "your/path/Importance_Final_combined.csv")
 
 # Variable Importance graph
-# Note: Rename several variables for ease of understanding
+# Note: Renaming several variables for ease of understanding
 imp_ch <- importance_final %>% mutate(across(c(Type,Source), as.factor)) %>%
   filter(Type=='CH') %>%
   mutate(Variable = recode(Variable,
@@ -1143,12 +1143,12 @@ fs.data <- st_transform(fs.data, crs = 32750)
 # Zonal statistics of CH and AGB from predicted raster data
 zsdata.ta.ch  <- terra::zonal(map_ta_ch_num,field.ta, fun='mean', as.polygons=TRUE, exact=TRUE, na.rm=TRUE)  %>% 
   sf::st_as_sf(coords = c("x", "y"), crs = 32750)%>%
-  mutate(resid_ta_ch = Height.q95 - .pred) %>% terra::vect() %>% terra::buffer(width = 15)
+  mutate(resid_ta_ch = Height_q95 - .pred) %>% terra::vect() %>% terra::buffer(width = 15)
 head(zsdata.ta.ch)
 
 zsdata.ta.agb  <- terra::zonal(map_ta_agb_num,field.ta, fun='mean', as.polygons=TRUE, exact=TRUE, na.rm=TRUE)  %>% 
   sf::st_as_sf(coords = c("x", "y"), crs = 32750)%>% 
-  mutate(resid_ta_a = AGB.Chave - .pred)%>% terra::vect() %>% terra::buffer(width = 15) 
+  mutate(resid_ta_a = AGB_Chave - .pred)%>% terra::vect() %>% terra::buffer(width = 15) 
 
 #writeVector(zsdata.ta.ch, "your/path/TA_plot_predict_CH.shp",overwrite=TRUE)
 #writeVector(zsdata.ta.agb, "your/path/TA_plot_predict_AGB.shp",overwrite=TRUE)
@@ -1167,14 +1167,14 @@ conflicted::conflicts_prefer(dplyr::mutate)
 resid_plot_ch = ggplot(zsdata.ta.ch.df, aes(x = .pred, y = resid_ta_ch, col=Elevation_Cop30m, shape=Type)) +
   geom_point(show.legend=F,size=2) +ylim(-7,7)+
   geom_hline(yintercept = 0, linetype = "dashed", color = "red") +
-  theme(legend.position='none',)+
+  theme(legend.position='none')+
   paletteer::scale_color_paletteer_c(trans = 'reverse',"grDevices::Spectral")+
   labs(title = "A. Canopy height", x = "Predicted canopy height (m)", y = "Residual", color="Elevation (m)")
 
 resid_plot_agb = ggplot(zsdata.ta.agb.df, aes(x = .pred, y = resid_ta_a, col=Elevation_Cop30m, shape=Type)) +
   geom_hline(yintercept = 0, linetype = "dashed", color = "red") +
   geom_point(size=2) +paletteer::scale_color_paletteer_c(trans = 'reverse',"grDevices::Spectral")+ylim(-480,480)+
-  theme(legend.position='none')+#,plot.title = element_text(face = "bold")
+  theme(legend.position='none')+
   labs(title = 'B. Aboveground biomass', x = expression("Predicted aboveground biomass (Mg ha"^-1 * ")"), 
        y = "Residual",Type="Mangrove type",  color="Elevation (m)")
 resid_plot_h+resid_plot_agb 
@@ -1250,21 +1250,21 @@ pg1/pg2
 ############## MAP OF SPATIAL CROSS-VALIDATION ###########
 
 map1=autoplot(rr_block_split1)+ theme_bw()+theme_void()+labs(title='Spatial data partition')+
-  scale_fill_manual(values = c('Testing'="lightsalmon", 'Training'="lightblue", 'NA'="skyblue"), #
+  scale_fill_manual(values = c('Testing'="lightsalmon", 'Training'="lightblue", 'NA'="skyblue"), 
                     name="Data",labels=c("(1) Model development","(2) Model finalization","Buffer"))+
-  scale_color_manual(values = c('Testing'="lightsalmon", 'Training'="lightblue", 'NA'="skyblue"),#
+  scale_color_manual(values = c('Testing'="lightsalmon", 'Training'="lightblue", 'NA'="skyblue"),
                      name="Data",labels=c("(1) Model development","(2) Model finalization","Buffer"))
 
 map21=autoplot(rr_block_split21)+ theme_bw()+theme_void()+labs(title='(1) Model development')+
-  scale_fill_manual(values = c('Testing'="lightsalmon", 'Training'="lightsalmon3",'NA'="skyblue"), #
+  scale_fill_manual(values = c('Testing'="lightsalmon", 'Training'="lightsalmon3",'NA'="skyblue"), 
                     name="Data",labels=c("Feature selection","Hyperparameter tuning", "Buffer"))+
-  scale_color_manual(values = c('Testing'="lightsalmon", 'Training'="lightsalmon3",'NA'="skyblue"), #, "Buffer"
+  scale_color_manual(values = c('Testing'="lightsalmon", 'Training'="lightsalmon3",'NA'="skyblue"), 
                      name="Data",labels=c("Feature selection","Hyperparameter tuning", "Buffer"))
 
 map22=autoplot(rr_block_split22a)+ theme_bw()+theme_void()+labs(title="(2) Model finalization")+
-  scale_fill_manual(values = c('Testing'="lightblue", 'Training'="lightblue3", 'NA'="skyblue"), #
+  scale_fill_manual(values = c('Testing'="lightblue", 'Training'="lightblue3", 'NA'="skyblue"), 
                     name="Data",labels=c("Final model testing","Final model training","Buffer"))+
-  scale_color_manual(values = c('Testing'="lightblue", 'Training'="lightblue3",'NA'="skyblue"), #, 
+  scale_color_manual(values = c('Testing'="lightblue", 'Training'="lightblue3",'NA'="skyblue"),  
                      name="Data",labels=c("Final model testing","Final model training","Buffer"))
 map1+map21+map22+plot_layout(ncol=3)
 #ggsave("your/path/Spatial partition.tiff",  width = 12, height = 6, dpi = 300)#, compression = "lzw"
@@ -1331,6 +1331,3 @@ scatter3D(clipE@data$X,clipE@data$Y,clipE@data$Z,pch = 16,colkey = FALSE, main="
           col.grid = "gray50", xlab="UTM Easting (m)", ylab="UTM Northing (m)", zlab="Normalized height (m)")
 
 dev.off()
-
-
-
