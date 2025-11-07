@@ -38,16 +38,12 @@ library(patchwork)    # Plot arrangement
 library(vip)          # Variable importance
 library(GGally)       # Correlation plots
 library(ggpointdensity) # Density scatter plots
-library(zen4R)        # Data repository access
 
 
 # Set preferred functions to avoid conflicts
 tidymodels_prefer()
 
 ##########################   DATA FOR MODEL   ###########################
-
-# Access data from Zenodo repository
-download_zenodo("10.5281/zenodo.17359993")
 
 # Read 15-m spatial resolution canopy height - aboveground biomass (CH - AGB) data and project to UTM zone 50S
 ch_agb <- terra::rast('your/path/CH_AGB_15m.tif') %>%  terra::project('EPSG:32750')
@@ -1331,3 +1327,4 @@ scatter3D(clipE@data$X,clipE@data$Y,clipE@data$Z,pch = 16,colkey = FALSE, main="
           col.grid = "gray50", xlab="UTM Easting (m)", ylab="UTM Northing (m)", zlab="Normalized height (m)")
 
 dev.off()
+
